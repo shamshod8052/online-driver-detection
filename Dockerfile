@@ -1,15 +1,23 @@
 # Base image
-FROM python:3.12-slim
+FROM python:3.9-slim
+
+# Non-root user
+RUN adduser --disabled-password myuser
+USER myuser
 
 # Ishchi papka
 WORKDIR /code
 
-# Dependensiyalarni ko‘chirish va o‘rnatish
-COPY requirements.txt .
+# Dependencies
+COPY --chown=myuser:myuser requirements.txt .
+RUN pip install --upgrade pip
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Loyihani ko‘chirish
-COPY . .
+# Loyiha fayllari
+COPY --chown=myuser:myuser . .
 
-# Daphne bilan ASGI serverni ishga tushirish
-CMD ["daphne", "-b", "0.0.0.0", "-p", "8000", "your_project_name.asgi:application"]
+# Entrypoint
+ENTRYPOINT ["./docker/entrypoint.sh"]
+
+# Default command
+CMD ["daphne", "-b", "0.0.0.0", "-p", "8000", "config.asgi:application"]
