@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Client Panel</title>
+</head>
+<body>
+
+<h1>Client Panel</h1>
+
+<h3>Drivers</h3>
+<ul id="drivers-list"></ul>
+
+<h3>Create Order</h3>
+<button id="create-order">Create</button>
+
+<script>
+const csrftoken = '{{ csrf_token }}';
+</script>
+
+<h3>Orders</h3>
+<ul id="orders-list"></ul>
+
+<script>
+const wsDrivers = new WebSocket("ws://" + window.location.host + "/ws/drivers/");
+const wsOrders  = new WebSocket("ws://" + window.location.host + "/ws/orders/");
+
+// driver updates
+wsDrivers.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+    const ul = document.getElementById("drivers-list");
+    let li = document.getElementById("driver-" + data.driver_id);
+
+    if (!li) {
+        li = document.createElement("li");
+        li.id = "driver-" + data.driver_id;
+        ul.appendChild(li);
+    }
+
+    li.textContent = `Driver ${data.driver_id}: ${data.status} (${data.lat}, ${data.lng})`;
+};
+
+// orders updates
+wsOrders.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+    const ul = document.getElementById("orders-list");
+    let li = document.getElementById(`order-${data.order_id}`);
+
+    if (!li) {
+        li = document.createElement("li");
+        li.id = `order-${data.order_id}`;
+        ul.appendChild(li);
+    }
+
+    li.textContent = `Order ${data.order_id}: ${data.status}`;
+};
+
+document.getElementById("create-order").onclick = () => {    
+    if (wsOrders.readyState === WebSocket.OPEN) {
+        wsOrders.send(JSON.stringify(
+            {type:"create_order",}
+        ));
+        
+        console.log("Order creation request sent by websocket!");
+        
+        fetch("/api/v1/order/create/", { 
+            method: "POST", headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": csrftoken
+            },
+        })
+        .then(() => console.log("An order has been created in the database.!"));
+    } else {
+        console.log("WebSocket not connected yet or closed!");
+    }
+};
+</script>
+
+</body>
+</html>

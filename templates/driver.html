@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Driver Panel</title>
+</head>
+<body>
+
+<h1>Driver Panel</h1>
+<p>Driver ID: <span id="driver-id">{{ driver_id }}</span></p>
+
+<button id="go-online">Go Online</button>
+<button id="go-offline">Go Offline</button>
+
+<h3>Location</h3>
+<input id="lat" value="41.311081"><br>
+<input id="lng" value="69.240562"><br>
+<button id="update-location">Update Location</button>
+
+<script>
+const csrftoken = '{{ csrf_token }}';
+</script>
+
+<script>
+const driverId = document.getElementById("driver-id").textContent;
+const ws = new WebSocket("ws://" + window.location.host + "/ws/drivers/");
+
+document.getElementById("go-online").onclick = () => {
+    if (ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify(
+            {type:"status_change", driver_id:driverId, status:"ONLINE"}
+        ));
+        
+        console.log("Driver status sent via websocket as ONLINE!");
+        
+        fetch("/api/v1/driver/online/", { 
+            method: "POST", headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": csrftoken
+            },
+        })
+        .then(() => console.log("Driver status saved to database as ONLINE!"));
+    } else {
+        console.log("WebSocket not connected yet or closed!");
+    }
+};
+
+document.getElementById("go-offline").onclick = () => {
+    if (ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify(
+            {type:"status_change", driver_id:driverId, status:"OFFLINE"}
+        ));
+        console.log("Driver status sent via websocket as OFFLINE!");
+        
+        fetch("/api/v1/driver/offline/", {
+            method: "POST", headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": csrftoken
+            },
+        })
+        .then(() => console.log("Driver status saved to database as OFFLINE!"));
+    } else {
+        console.log("WebSocket not connected yet or closed!");
+    }
+};
+
+document.getElementById("update-location").onclick = () => {
+    let latitude = document.getElementById("lat").value;
+    let longitude = document.getElementById("lng").value;
+    
+    if (ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify(
+            {
+                type:"location_update", driver_id:driverId, 
+                lat:latitude, 
+                lng:longitude,
+            }
+        ));
+        console.log("Driver location sent with websocket!");
+        
+        fetch(`/api/v1/driver/location/${latitude}/${longitude}/`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": csrftoken
+            },
+        })
+        .then(() => console.log("Driver location saved to database!"));
+    } else {
+        console.log("WebSocket not connected yet or closed!");
+    }
+};
+</script>
+
+</body>
+</html>
